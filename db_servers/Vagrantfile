@@ -1,0 +1,49 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  
+  ##### Define Production DB Server #####
+  config.vm.define "prodDB" do |prodDB|
+    prodDB.vm.box = "ubuntu/trusty64"
+    prodDB.vm.hostname = "prodDB"
+
+    # Networking
+    prodDB.vm.network "forwarded_port", guest: 5432, host: 54320, id: "postgresql"
+    prodDB.vm.network "private_network", ip: "192.168.100.50"
+
+    # Synced Folders
+    prodDB.vm.synced_folder "../scripts", "/vagrant"
+
+    # Powered up configuration
+    prodDB.vm.provision "shell", inline: <<-SHELL
+      apt-get -y update
+      apt-get install -y postgresql postgresql-contrib libpq-dev postgresql-plpython-9.3
+      useradd -m prod_dba
+      usermod --password $(echo SampleP4ss! | openssl passwd -1 -stdin) prod_dba
+    SHELL
+    prodDB.vm.provision :shell, path: "../scripts/setup_Database.sh"
+  end
+  
+  ##### Define Development DB Server #####
+  config.vm.define "devDB" do |devDB|
+    devDB.vm.box = "ubuntu/trusty64"
+    devDB.vm.hostname = "devDB"
+
+    # Networking
+    devDB.vm.network "forwarded_port", guest: 5432, host: 54321, id: "postgresql"
+    devDB.vm.network "private_network", ip: "192.168.100.51"
+
+    # Synced Folders
+    devDB.vm.synced_folder "../scripts", "/vagrant"
+
+    # Powered up configuration
+    devDB.vm.provision "shell", inline: <<-SHELL
+      apt-get -y update
+      apt-get install -y postgresql postgresql-contrib libpq-dev postgresql-plpython-9.3
+      useradd -m dev_dba
+      usermod --password $(echo SampleP4ss! | openssl passwd -1 -stdin) dev_dba
+    SHELL
+    devDB.vm.provision :shell, path: "../scripts/dev_db/importDevDB.sh"
+  end
+end
